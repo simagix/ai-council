@@ -1,20 +1,41 @@
 # AI Council
 
-**A multi-model deliberation experiment — v0.2.0**
+**Structured LLM Deliberation for Better Decisions — v0.2.0**
 
-`ai-council` convenes three different local Ollama models to discuss a question, challenge each other's reasoning, and produce a consensus report. It is an experimental prototype built to answer one question:
+Stop asking one AI. Ask three, and let them debate.
 
-> Does structured disagreement between different LLMs produce a more reliable conclusion than simply asking one LLM?
+`ai-council` convenes three different local Ollama models to independently answer a question, then critique each other's reasoning, and finally synthesize a consensus report. The result: more nuanced answers, preserved disagreements, and transparency into how the conclusion was reached.
 
-No cloud services. No agent frameworks. Just three local models, a transparent council protocol, and a transcript that reads as well in a browser as it does in a terminal. v0.2.0 adds an optional **local web interface** — still 100% local, still standard-library only.
+**Core question:** Does structured disagreement between different LLMs produce a more reliable conclusion than simply asking one LLM?
+
+**Answer:** Often yes — and you can see exactly why.
+
+### Get Started (1 minute)
+
+```bash
+python ai_council.py --server
+```
+
+That's it. Opens **http://127.0.0.1:8080** in your browser. Type or paste a question, optionally drag & drop a context file, and watch three models deliberate in real time with live streaming responses. Everything stays on your machine.
 
 ---
 
-## How It Works
+### Why This Matters
+
+- **Single LLM responses are confident but often wrong.** A model will commit to an answer even when evidence is mixed or assumptions are shaky.
+- **Structured disagreement surfaces nuance.** When three different models debate, weak arguments break apart and assumptions get questioned.
+- **Consensus without voting.** This isn't democracy (2 YES vs 1 NO = YES wins). The minority position is preserved if significant. Sometimes dissent is the most valuable insight.
+- **100% local, zero cloud.** Runs on your Mac or Linux machine with Ollama. No API keys. No data leaves your computer. No agent frameworks or vendor lock-in — just Python standard library.
+
+---
+
+---
+
+## The Council Protocol
 
 ![AI Council workflow diagram: a user question is sent to three models for independent opinions (Round 1), the models then critique each other's arguments (Round 2), and a moderator synthesizes a consensus report (Round 3)](council-workflow.jpeg)
 
-*The council workflow: three independent opinions → structured discussion → moderator's consensus report.*
+*Three independent opinions → structured discussion → moderator's consensus report*
 
 ```
 User question
@@ -23,7 +44,7 @@ Round 1 — Three independent opinions (models see only the question)
       ↓
 Round 2 — Council discussion (each model sees and critiques the others' arguments)
       ↓
-Moderator — One model synthesizes the final report
+Round 3 — Moderator synthesizes the final report
       ↓
 Consensus + Disagreements + Strongest Arguments + Minority Opinion
 ```
@@ -53,27 +74,29 @@ One model (the Analyst) acts as moderator after completing its participant role.
 - **Final Recommendation** — the moderator's best overall conclusion
 - **Confidence** — Low / Medium / High, with an explanation
 
-### The Core Principle: Evaluate Reasoning, Not Votes
+### Key Principle: Preserve Minority Arguments
 
-The council deliberately does **not** implement majority voting. `2 YES vs 1 NO → YES wins` is not sufficient — a minority argument may be correct. The moderator is explicitly instructed:
+The council deliberately does **not** implement majority voting. `2 YES vs 1 NO → YES wins` is lazy — and often wrong. The moderator is explicitly instructed:
 
 > Do not manufacture consensus. If significant disagreement remains, say so explicitly.
 
+This is why AI Council is different from other multi-agent approaches: dissent is a feature, not a bug.
+
 ---
 
-## Council Members (defaults)
+## Council Members (Configurable)
 
 | Model             | Role                | Temperament |
 | ----------------- | ------------------- | ----------- |
-| `qwen3.5:9b`      | Analyst             | Technically/logically strongest answer: facts vs. assumptions, trade-offs |
-| `gemma4:latest`   | Independent Thinker | Avoids conventional wisdom, considers overlooked options |
-| `llama3.2:latest` | Skeptic             | Hunts hidden assumptions, challenges unsupported claims, considers failure cases |
+| `qwen3.5:9b`      | Analyst             | Technically rigorous: facts vs. assumptions, trade-offs, strengths of competing views |
+| `gemma4:latest`   | Independent Thinker | Challenges orthodoxy, considers overlooked options and unconventional angles |
+| `llama3.2:latest` | Skeptic             | Questions assumptions, hunts flaws in logic, surfaces failure cases and hidden risks |
 
-The models intentionally differ in size and capability. The largest model is not assumed to be automatically correct. All model names are configurable — see [Configuration](#configuration).
+The models intentionally differ in size and capability. No model is auto-promoted for being larger — all voices are equal. Change any model via environment variables (see [Configuration](#configuration)).
 
-Responses are **streamed live** to the terminal as each model generates — the label `[Model — Role]` appears as soon as the first token arrives. Note that the first response from each model includes model load time (tens of seconds for larger models), and reasoning models like `qwen3.5` spend time on hidden thinking before their visible answer; their `<think>` spans are hidden from the display and the transcript.
+**Live streaming:** Responses stream in real time, both in the terminal and web interface — you see the `[Model — Role]` label as soon as the first token arrives. The first response from each model includes load time (Ollama pulls the model to memory), and reasoning models spend time on hidden thinking before their visible answer.
 
-Models run **sequentially, not concurrently**, to minimize memory pressure on a 32 GB Apple M1.
+**Sequential execution** (not parallel) minimizes memory pressure and keeps transcripts clean.
 
 ---
 
@@ -167,48 +190,45 @@ question file and model outputs is rendered to real HTML (headings,
 lists, bold/italic/code, blockquotes), and everything is escaped, so
 model output can never inject markup.
 
-### Web interface (server mode)
+### Web Interface (Browser Mode)
 
-The simplest way to run the council as a web app — one flag, no arguments:
+**Simplest way to use AI Council:**
 
 ```bash
 python ai_council.py --server
 ```
 
-That's it. It starts a local web server at **http://127.0.0.1:8080** (the default port) and opens your browser automatically. Type or paste a question, optionally drag & drop a context file, and watch the rounds stream live.
+Opens **http://127.0.0.1:8080** automatically. Type or paste your question, optionally drag & drop a context file, and watch three models deliberate with live streaming. When finished, download the **Final Report** (consensus + disagreements + strongest arguments + minority opinion) as Markdown or self-contained HTML.
 
-Everything stays on your machine: the server binds to `127.0.0.1` only, talks to your local Ollama, and stores all session history on disk.
+**Features:**
+- **Live streaming** — watch responses arrive token-by-token
+- **Session history** — every council deliberation is saved (survives server restarts)
+- **Download options** — Council report, full transcript (Markdown or HTML)
+- **100% local** — server binds to `127.0.0.1` only, no external network traffic
 
-To run it in the background as a daemon:
+**Run in the background:**
 
 ```bash
-python ai_council.py --server --daemonize        # start in the background
-python ai_council.py --server --stop             # stop the background daemon
+python ai_council.py --server --daemonize        # start in background
+python ai_council.py --server --stop             # stop the daemon
 ```
 
-All options:
+**All server options:**
 
 | Flag | Meaning | Default |
 | --- | --- | --- |
 | `--host` | Interface to bind | `127.0.0.1` |
 | `--port` | Port to listen on | `8080` |
 | `--data-dir` | Where session history is stored | `$AI_COUNCIL_DATA_DIR` or `~/.ai-council` |
-| `--daemonize` | Fork into the background and return immediately | off |
-| `--stop` | Stop the background daemon and exit | — |
-| `--pid-file` | Pid file used by `--daemonize`/`--stop` | `<data-dir>/server.pid` |
-| `--log-file` | Log file used by `--daemonize` | `<data-dir>/server.log` |
-| `--no-open` | Do not auto-open a browser tab | off |
+| `--daemonize` | Fork into the background | off |
+| `--stop` | Stop the background daemon | — |
+| `--pid-file` | Pid file for daemon mode | `<data-dir>/server.pid` |
+| `--log-file` | Log file for daemon mode | `<data-dir>/server.log` |
+| `--no-open` | Don't auto-open browser | off |
 
-The web interface keeps a **history** of every council deliberation
-(stored as JSON files under the data dir, so it survives restarts) and
-lets you re-open any past session, plus download the **Council Final
-Report** or the full Round 1/2 transcript as Markdown or a
-self-contained HTML page.
+**API for scripting:**
 
-The server exposes a small JSON API, if you want to script it:
-`GET /api/health`, `GET /api/history`, `POST /api/sessions`,
-`GET/DELETE /api/sessions/<id>`, `GET /api/sessions/<id>/events` (live
-Server-Sent Events), and `GET /api/sessions/<id>/download?format=report|md|html`.
+The server exposes a JSON API: `GET /api/health`, `GET /api/history`, `POST /api/sessions`, `GET/DELETE /api/sessions/<id>`, `GET /api/sessions/<id>/events` (Server-Sent Events), `GET /api/sessions/<id>/download?format=report|md|html`.
 
 ---
 
@@ -258,7 +278,7 @@ ai-council/
 └── tests/
 ```
 
-**Dependencies:** zero at runtime — Python's standard library only; the local Ollama API is accessed directly over HTTP. No LangChain, CrewAI, AutoGen, or any agent framework.
+**Zero external dependencies** — Python standard library only. The local Ollama API is called directly over HTTP. No LangChain, CrewAI, AutoGen, or any vendor-specific agent framework. This keeps the protocol transparent and easy to understand (or fork and modify).
 
 ## Development
 
