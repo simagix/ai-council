@@ -73,10 +73,10 @@ class TestRunSession(unittest.TestCase):
         from ollama import OllamaError
 
         class ModeratorFails(FakeClient):
-            def generate(self, model, prompt, system=None, timeout=None):
+            def generate(self, model, prompt, system=None, timeout=None, on_token=None):
                 if system and "Do not manufacture consensus" in system:
                     raise OllamaError("moderator unavailable")
-                return super().generate(model, prompt, system, timeout)
+                return super().generate(model, prompt, system, timeout, on_token)
 
         out = io.StringIO()
         code = run_session(QUESTION, make_config(), ModeratorFails(), out=out)

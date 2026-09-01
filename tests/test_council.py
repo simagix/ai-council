@@ -80,11 +80,11 @@ class TestRunCouncil(unittest.TestCase):
         config = make_config()
 
         class ModeratorFails(FakeClient):
-            def generate(self, model, prompt, system=None, timeout=None):
+            def generate(self, model, prompt, system=None, timeout=None, on_token=None):
                 # the moderator prompt is the only one using MODERATOR_SYSTEM
                 if system and "Do not manufacture consensus" in system:
                     raise OllamaError("moderator unavailable")
-                return super().generate(model, prompt, system, timeout)
+                return super().generate(model, prompt, system, timeout, on_token)
 
         result = run_council(QUESTION, config, client=ModeratorFails())
         self.assertIsNone(result.report)
@@ -92,6 +92,25 @@ class TestRunCouncil(unittest.TestCase):
         self.assertEqual(len(result.round2), 3)
         self.assertEqual(len(result.failures), 1)
         self.assertEqual(result.failures[0].stage, "Moderator")
+
+
+    def test_on_token_callback_receives_streamed_chunks(self):
+        config = make_config()
+        client = FakeClient()
+        tokens = []
+        result = run_council(
+            QUESTION, config, client=client, on_token=tokens.append
+        )
+        # streamed for all 7 generations, in small chunks
+        self.assertGreater(len(tokens), 7)
+        self.assertEqual(tokens[0], "[qwen3.")
+        self.assertIsNotNone(result.report)
+
+    def test_no_streaming_without_on_token(self):
+        config = make_config()
+        client = FakeClient()
+        run_council(QUESTION, config, client=client)
+        self.assertEqual(client.calls[0][1], QUESTION)  # sanity, no error
 
 
 class TestPreflight(unittest.TestCase):

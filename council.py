@@ -119,6 +119,7 @@ def run_council(
     on_request: Optional[Callable[[CouncilMember, str], None]] = None,
     on_response: Optional[Callable[[CouncilMember, str, str], None]] = None,
     on_failure: Optional[Callable[[CouncilMember, str, str], None]] = None,
+    on_token: Optional[Callable[[str], None]] = None,
 ) -> CouncilResult:
     """Run the full council protocol sequentially.
 
@@ -127,6 +128,7 @@ def run_council(
 
     - ``on_stage(title)`` — a new round begins.
     - ``on_request(member, stage)`` — a member is being consulted.
+    - ``on_token(token)`` — a token of the current response arrived.
     - ``on_response(member, text, stage)`` — a member finished.
     - ``on_failure(member, stage, error)`` — a member failed.
     """
@@ -138,6 +140,10 @@ def run_council(
         if on_failure:
             on_failure(member, stage, error)
 
+    def generate(model: str, prompt: str, system: str) -> str:
+        kwargs = {"on_token": on_token} if on_token else {}
+        return client.generate(model, prompt, system=system, **kwargs)
+
     # -- Round 1: independent opinions ------------------------------------
     if on_stage:
         on_stage("ROUND 1 — INDEPENDENT OPINIONS")
@@ -145,10 +151,10 @@ def run_council(
         if on_request:
             on_request(member, "Round 1")
         try:
-            text = client.generate(
+            text = generate(
                 member.model,
                 question,
-                system=ROLE_SYSTEM_PROMPTS[member.role_key],
+                ROLE_SYSTEM_PROMPTS[member.role_key],
             )
         except OllamaError as exc:
             fail(member, "Round 1", str(exc))
@@ -178,10 +184,10 @@ def run_council(
             if on_request:
                 on_request(member, "Round 2")
             try:
-                text = client.generate(
+                text = generate(
                     member.model,
                     prompt,
-                    system=ROLE_SYSTEM_PROMPTS[member.role_key],
+                    ROLE_SYSTEM_PROMPTS[member.role_key],
                 )
             except OllamaError as exc:
                 fail(member, "Round 2", str(exc))
@@ -207,9 +213,7 @@ def run_council(
         ),
     )
     try:
-        text = client.generate(
-            moderator.model, moderator_prompt, system=MODERATOR_SYSTEM
-        )
+        text = generate(moderator.model, moderator_prompt, MODERATOR_SYSTEM)
     except OllamaError as exc:
         fail(moderator, "Moderator", str(exc))
         return result

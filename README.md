@@ -67,6 +67,8 @@ The council deliberately does **not** implement majority voting. `2 YES vs 1 NO 
 
 The models intentionally differ in size and capability. The largest model is not assumed to be automatically correct. All model names are configurable — see [Configuration](#configuration).
 
+Responses are **streamed live** to the terminal as each model generates — the label `[Model — Role]` appears as soon as the first token arrives. Note that the first response from each model includes model load time (tens of seconds for larger models), and reasoning models like `qwen3.5` spend time on hidden thinking before their visible answer; their `<think>` spans are hidden from the display and the transcript.
+
 Models run **sequentially, not concurrently**, to minimize memory pressure on a 32 GB Apple M1.
 
 ---
@@ -136,7 +138,7 @@ Model names and settings live in one place (`config.py`) so they can be changed 
 | Variable | Meaning | Default |
 | --- | --- | --- |
 | `AI_COUNCIL_OLLAMA_HOST` | Ollama API base URL | `http://localhost:11434` |
-| `AI_COUNCIL_TIMEOUT` | Per-request timeout in seconds | `300` |
+| `AI_COUNCIL_TIMEOUT` | Per-request timeout in seconds | `600` |
 | `AI_COUNCIL_MODEL_ANALYST` | Model for the Analyst role | `qwen3.5:9b` |
 | `AI_COUNCIL_MODEL_THINKER` | Model for the Independent Thinker role | `gemma4:latest` |
 | `AI_COUNCIL_MODEL_SKEPTIC` | Model for the Skeptic role | `llama3.2:latest` |

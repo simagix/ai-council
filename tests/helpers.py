@@ -40,15 +40,21 @@ class FakeClient:
             raise OllamaConnectionError("connection refused")
         return list(self.models)
 
-    def generate(self, model, prompt, system=None, timeout=None):
+    def generate(self, model, prompt, system=None, timeout=None, on_token=None):
         if self.connection_error:
             raise OllamaConnectionError("connection refused")
         self.calls.append((model, prompt, system))
         if model in self.fail_models:
             raise OllamaError(f"model {model} exploded")
         if self._reply is not None:
-            return self._reply(model, prompt)
-        return f"[{model}] my answer"
+            text = self._reply(model, prompt)
+        else:
+            text = f"[{model}] my answer"
+        if on_token is not None:
+            # Simulate streaming in small chunks.
+            for i in range(0, len(text), 7):
+                on_token(text[i:i + 7])
+        return text
 
 
 def make_config():

@@ -15,6 +15,7 @@ from ollama import (
     OllamaClient,
     OllamaConnectionError,
     OllamaError,
+    ThinkingStreamFilter,
 )
 
 _ROOT = Path(__file__).resolve().parent
@@ -135,14 +136,36 @@ def run_session(
     def on_request(member, stage: str) -> None:
         role = "Moderator" if stage == "Moderator" else member.role
         print(f"Consulting {member.name} ({role})...", file=out)
+        state["label"] = _label(
+            member, "Moderator" if stage == "Moderator" else None
+        )
+        state["started"] = False
+        state["filter"] = ThinkingStreamFilter()
+
+    def on_token(token: str) -> None:
+        if not state["started"]:
+            # First visible token: print the member label, then stream.
+            print(f"\n{state['label']}\n", file=out)
+            state["started"] = True
+        print(state["filter"].feed(token), end="", file=out, flush=True)
 
     def on_response(member, text: str, stage: str) -> None:
         role = "Moderator" if stage == "Moderator" else None
-        record(f"{_label(member, role)}\n\n{text}\n")
+        label = _label(member, role)
+        if state["started"]:
+            # Text was already streamed live; just close the block and
+            # file the clean text into the transcript.
+            print(state["filter"].feed(""), end="", file=out)
+            print(file=out)
+            transcript.append(f"{label}\n\n{text}\n")
+        else:
+            record(f"{label}\n\n{text}\n")
+        state["started"] = False
 
     def on_failure(member, stage: str, error: str) -> None:
         record(_failure_block(member, stage, error))
 
+    state = {"label": "", "started": False, "filter": ThinkingStreamFilter()}
     try:
         result = run_council(
             question,
@@ -152,6 +175,7 @@ def run_session(
             on_request=on_request,
             on_response=on_response,
             on_failure=on_failure,
+            on_token=on_token,
         )
     except CouncilError as exc:
         print(f"\nCouncil aborted: {exc}", file=out)
