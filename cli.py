@@ -100,24 +100,51 @@ def _failure_block(member, stage: str, error: str) -> str:
     )
 
 
-def save_transcript(
-    path: str, question: str, transcript: List[str], out: IO
-) -> None:
-    """Write the whole session to ``path`` as a Markdown file."""
-    content = "\n".join(
-        [
-            "# AI Council Session",
-            "",
-            f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            "",
-            f"**Question:** {question}",
-            "",
-            "```",
-            *transcript,
-            "```",
-            "",
-        ]
-    )
+def save_transcript(path: str, result, out: IO) -> None:
+    """Write the session to ``path`` as readable Markdown.
+
+    Unlike the terminal transcript (ASCII banners for a terminal), the
+    saved file uses real Markdown structure so it renders well in any
+    Markdown viewer: the question and each member's output keep their
+    own formatting instead of being fenced into one code block.
+    """
+    lines: List[str] = [
+        "# AI Council Session",
+        "",
+        f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "",
+        "## Question",
+        "",
+        result.question,
+        "",
+    ]
+    if result.round1:
+        lines += ["## Round 1 — Independent Opinions", ""]
+        for r in result.round1:
+            lines += [f"### {r.member.name} — {r.member.role}", "", r.text, ""]
+    if result.round2:
+        lines += ["## Round 2 — Council Discussion", ""]
+        for r in result.round2:
+            lines += [f"### {r.member.name} — {r.member.role}", "", r.text, ""]
+    if result.report is not None:
+        lines += ["## Final Council Report", ""]
+        if result.report_member is not None:
+            lines += [
+                f"### {result.report_member.name} — Moderator",
+                "",
+            ]
+        lines += [result.report, ""]
+    if result.failures:
+        lines += ["## Failures", ""]
+        for f in result.failures:
+            lines += [
+                f"- **{f.member.name} ({f.member.role})** failed during "
+                f"{f.stage}: {f.error}",
+                "",
+            ]
+    for note in result.notes:
+        lines += [f"> {note}", ""]
+    content = "\n".join(lines)
     try:
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(content)
@@ -216,7 +243,7 @@ def run_session(
     record(DOUBLE_LINE)
 
     if save_path:
-        save_transcript(save_path, question, transcript, out)
+        save_transcript(save_path, result, out)
     return 0
 
 

@@ -177,8 +177,15 @@ class TestRunSession(unittest.TestCase):
             with open(path, encoding="utf-8") as fh:
                 content = fh.read()
         self.assertIn("# AI Council Session", content)
-        self.assertIn(f"**Question:** {QUESTION}", content)
-        self.assertIn("ROUND 1 — INDEPENDENT OPINIONS", content)
+        self.assertIn("## Question", content)
+        self.assertIn(QUESTION, content)
+        self.assertIn("## Round 1 — Independent Opinions", content)
+        self.assertIn("### Qwen 3.5 9B — Analyst", content)
+        self.assertIn("## Round 2 — Council Discussion", content)
+        self.assertIn("## Final Council Report", content)
+        self.assertIn("### Qwen 3.5 9B — Moderator", content)
+        # readable markdown: no giant code fences
+        self.assertNotIn("```", content)
         self.assertIn("Transcript saved to", out.getvalue())
 
 
