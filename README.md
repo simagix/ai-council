@@ -1,12 +1,12 @@
 # AI Council
 
-**A multi-model deliberation experiment — v0.1.1**
+**A multi-model deliberation experiment — v0.2.0**
 
 `ai-council` convenes three different local Ollama models to discuss a question, challenge each other's reasoning, and produce a consensus report. It is an experimental prototype built to answer one question:
 
 > Does structured disagreement between different LLMs produce a more reliable conclusion than simply asking one LLM?
 
-No web server. No cloud services. No agent frameworks. Just three local models, a transparent council protocol, and a transcript that reads as well in a browser as it does in a terminal.
+No cloud services. No agent frameworks. Just three local models, a transparent council protocol, and a transcript that reads as well in a browser as it does in a terminal. v0.2.0 adds an optional **local web interface** — still 100% local, still standard-library only.
 
 ---
 
@@ -101,18 +101,14 @@ cd ai-council
 python3 -m venv .venv
 .venv/bin/pip install -e .
 
-# optionally, make `ai-council` available as a global command
-ln -sf "$(pwd)/.venv/bin/ai-council" /opt/homebrew/bin/ai-council   # macOS (Homebrew)
-
-ai-council --version    # -> ai-council v0.1.1
-python ai_council.py --version    # -> ai-council v0.1.1
+python ai_council.py --version    # -> ai-council v0.2.0
 ```
 
 No installation is required either — run the launcher directly:
 
 ```bash
 python ai_council.py "Should I buy 256GB or 512GB for my Mac mini?"
-python ai_council.py --version        # -> ai-council v0.1.1
+python ai_council.py --version        # -> ai-council v0.2.0
 ```
 
 ## Usage
@@ -171,6 +167,49 @@ question file and model outputs is rendered to real HTML (headings,
 lists, bold/italic/code, blockquotes), and everything is escaped, so
 model output can never inject markup.
 
+### Web interface (server mode)
+
+The simplest way to run the council as a web app — one flag, no arguments:
+
+```bash
+python ai_council.py --server
+```
+
+That's it. It starts a local web server at **http://127.0.0.1:8080** (the default port) and opens your browser automatically. Type or paste a question, optionally drag & drop a context file, and watch the rounds stream live.
+
+Everything stays on your machine: the server binds to `127.0.0.1` only, talks to your local Ollama, and stores all session history on disk.
+
+To run it in the background as a daemon:
+
+```bash
+python ai_council.py --server --daemonize        # start in the background
+python ai_council.py --server --stop             # stop the background daemon
+```
+
+All options:
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--host` | Interface to bind | `127.0.0.1` |
+| `--port` | Port to listen on | `8080` |
+| `--data-dir` | Where session history is stored | `$AI_COUNCIL_DATA_DIR` or `~/.ai-council` |
+| `--daemonize` | Fork into the background and return immediately | off |
+| `--stop` | Stop the background daemon and exit | — |
+| `--pid-file` | Pid file used by `--daemonize`/`--stop` | `<data-dir>/server.pid` |
+| `--log-file` | Log file used by `--daemonize` | `<data-dir>/server.log` |
+| `--no-open` | Do not auto-open a browser tab | off |
+
+The web interface keeps a **history** of every council deliberation
+(stored as JSON files under the data dir, so it survives restarts) and
+lets you re-open any past session, plus download the **Council Final
+Report** or the full Round 1/2 transcript as Markdown or a
+self-contained HTML page.
+
+The server exposes a small JSON API, if you want to script it:
+`GET /api/health`, `GET /api/history`, `POST /api/sessions`,
+`GET/DELETE /api/sessions/<id>`, `GET /api/sessions/<id>/events` (live
+Server-Sent Events), and `GET /api/sessions/<id>/download?format=report|md|html`.
+
 ---
 
 ## Configuration
@@ -205,15 +244,17 @@ Deliberately small and modular — the orchestration is built by hand so the cou
 ```
 ai-council/
 ├── README.md
-├── VERSION               # single source of truth: "0.1.1"
+├── VERSION               # single source of truth: "0.2.0"
 ├── pyproject.toml
 ├── ai_council.py         # launcher / main entry: python ai_council.py ... / --version
-├── cli.py                # argument parsing, interactive input, transcript display, --md/--html rendering
+├── cli.py                # argument parsing, interactive input, transcript display, --md/--html rendering, --server dispatch
 ├── council.py            # orchestrates Round 1 → Round 2 → Moderator → report
 ├── ollama.py             # local Ollama API client (stdlib urllib); errors and timeouts
 ├── prompts.py            # all system prompts and discussion prompts in one place
 ├── models.py             # CouncilMember(name, model, role, role_key) representations
 ├── config.py             # model names and basic settings; env-var overrides
+├── server.py             # web interface: JSON API + SSE + embedded single-page app; `--server` flag
+├── store.py              # persistent session store (one JSON file per session) with event log
 └── tests/
 ```
 
@@ -251,9 +292,8 @@ Failures are reported clearly — the council never silently substitutes a model
 
 ---
 
-## Non-Goals (v0.1)
+## Non-Goals
 
-- Web UI
 - Authentication
 - Cloud model APIs
 - Persistent or vector databases
@@ -263,6 +303,8 @@ Failures are reported clearly — the council never silently substitutes a model
 - Automatic model selection
 - Agent frameworks
 
+(The web UI shipped in v0.2.0 — see [Web interface (server mode)](#web-interface-server-mode).)
+
 ## Roadmap (future possibilities)
 
 Deliberately not implemented yet, but the architecture keeps the door open:
@@ -270,7 +312,7 @@ Deliberately not implemented yet, but the architecture keeps the door open:
 - Cloud participants: ChatGPT, Gemini, Claude
 - More Ollama models, different council roles
 - More debate rounds; user participation mid-discussion
-- Interactive web interface; session history; consensus scoring
+- Consensus scoring
 - Evidence/research phase, fact-checker and devil's advocate participants
 
 ## Development Philosophy

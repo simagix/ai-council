@@ -695,11 +695,31 @@ def run_session(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+
+    # ``--server`` launches the web interface (the ``serve`` subcommand
+    # remains as a legacy alias).  The flag is stripped before dispatch so
+    # the server parser only sees its own options.
+    if "--server" in argv:
+        argv = [a for a in argv if a != "--server"]
+        from server import serve_main
+
+        return serve_main(argv)
+
+    # Legacy alias: ``... serve ...``.  Only treat the word "serve" as a
+    # subcommand when nothing else follows it or when the next token is a
+    # flag, so questions like "serve me a sandwich" still reach the council.
+    if argv and argv[0] == "serve" and (len(argv) == 1 or argv[1].startswith("-")):
+        from server import serve_main
+
+        return serve_main(argv[1:])
+
     parser = argparse.ArgumentParser(
         prog="ai-council",
         description=(
             "Convene three local Ollama models to deliberate a question "
-            "and produce a consensus report."
+            "and produce a consensus report. Run with --server to start "
+            "the web interface."
         ),
     )
     parser.add_argument(

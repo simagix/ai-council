@@ -14,7 +14,7 @@ license = { text = "MIT" }
 ai-council = "cli:main"
 
 [tool.setuptools]
-py-modules = ["ai_council", "cli", "council", "config", "models", "ollama", "prompts"]
+py-modules = ["ai_council", "cli", "council", "config", "models", "ollama", "prompts", "server", "store"]
 
 [tool.setuptools.dynamic]
 version = { file = "VERSION" }

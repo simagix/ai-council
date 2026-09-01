@@ -5,12 +5,51 @@ import io
 import os
 import tempfile
 import unittest
+import unittest.mock
 
+import helpers  # noqa: F401  (puts the repo root on sys.path)
+import server as server_module
 from cli import main, run_session, __version__
 
 from helpers import FakeClient, make_config
 
 QUESTION = "Should I buy 256GB or 512GB?"
+
+
+class TestServerDispatch(unittest.TestCase):
+    """``--server`` routes to serve_main; ``serve`` stays a legacy alias."""
+
+    def test_server_flag_dispatches(self):
+        calls = []
+        with unittest.mock.patch.object(
+            server_module, "serve_main", lambda argv: calls.append(argv) or 0
+        ):
+            code = main(["--server", "--port", "9999"])
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [["--port", "9999"]])
+
+    def test_serve_alias_dispatches(self):
+        calls = []
+        with unittest.mock.patch.object(
+            server_module, "serve_main", lambda argv: calls.append(argv) or 0
+        ):
+            code = main(["serve", "--port", "9999"])
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [["--port", "9999"]])
+
+    def test_serve_word_in_question_reaches_council(self):
+        # "serve me a sandwich" is a question, not the subcommand.
+        calls = []
+        with unittest.mock.patch.object(
+            server_module, "serve_main", lambda argv: calls.append(argv) or 0
+        ):
+            with contextlib.redirect_stderr(io.StringIO()):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    try:
+                        main(["serve me a sandwich"])
+                    except SystemExit:
+                        pass
+        self.assertEqual(calls, [])
 
 
 class TestVersion(unittest.TestCase):
