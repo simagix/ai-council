@@ -96,7 +96,22 @@ ollama pull llama3.2:latest
 ```bash
 git clone https://github.com/simagix/ai-council.git
 cd ai-council
-pip install -e .
+
+# Homebrew Python is externally managed — use a project venv
+python3 -m venv .venv
+.venv/bin/pip install -e .
+
+# optionally, make `ai-council` available as a global command
+ln -sf "$(pwd)/.venv/bin/ai-council" /opt/homebrew/bin/ai-council   # macOS (Homebrew)
+
+ai-council --version    # -> ai-council v0.1.0
+```
+
+No installation is required either — run the launcher directly:
+
+```bash
+python ai_council.py "Should I buy 256GB or 512GB for my Mac mini?"
+python ai_council.py --version        # -> ai-council v0.1.0
 ```
 
 ## Usage
@@ -105,13 +120,6 @@ Ask a one-off question:
 
 ```bash
 ai-council "Should I buy 256GB or 512GB for my Mac mini?"
-```
-
-No installation is required either — run the launcher directly:
-
-```bash
-python ai_council.py "Should I buy 256GB or 512GB for my Mac mini?"
-python ai_council.py --version        # -> ai-council v0.1.0
 ```
 
 Or run interactively (multi-line questions supported — end with `Ctrl-D`):
