@@ -20,11 +20,13 @@ A useful shape (see `mac-mini-storage.md`):
 ## Running one
 
 ```bash
-ai-council --file use_cases/mac-mini-storage.md
+python ai_council.py --file use_cases/mac-mini-storage.md
 
-# save the transcript too
-ai-council --file use_cases/mac-mini-storage.md --save council.md
+# the HTML transcript is written by default (out/council-<timestamp>.html);
+# --md/--html pick Markdown and/or an exact filename — combinable
+python ai_council.py --file use_cases/mac-mini-storage.md
+python ai_council.py --file use_cases/mac-mini-storage.md --md council.md --html council.html
 
 # pipe context in instead
-cat my-question.md | ai-council --file -
+cat my-question.md | python ai_council.py --file -
 ```

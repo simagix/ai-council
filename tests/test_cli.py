@@ -1,4 +1,4 @@
-"""Tests for the CLI: version, transcript rendering, --save, error paths."""
+"""Tests for the CLI: version, transcript rendering, --md/--html, error paths."""
 
 import contextlib
 import io
@@ -20,7 +20,7 @@ class TestVersion(unittest.TestCase):
             with contextlib.redirect_stdout(out):
                 main(["--version"])
         self.assertEqual(ctx.exception.code, 0)
-        self.assertEqual(out.getvalue().strip(), "ai-council v0.1.0")
+        self.assertEqual(out.getvalue().strip(), f"ai-council v{__version__}")
 
     def test_version_matches_version_file(self):
         root = os.path.join(os.path.dirname(__file__), os.pardir)
@@ -171,7 +171,7 @@ class TestRunSession(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "council.md")
             code = run_session(
-                QUESTION, make_config(), FakeClient(), out=out, save_path=path
+                QUESTION, make_config(), FakeClient(), out=out, md_path=path
             )
             self.assertEqual(code, 0)
             with open(path, encoding="utf-8") as fh:
@@ -187,6 +187,99 @@ class TestRunSession(unittest.TestCase):
         # readable markdown: no giant code fences
         self.assertNotIn("```", content)
         self.assertIn("Transcript saved to", out.getvalue())
+
+    def test_save_writes_html_file(self):
+        out = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "council.html")
+            code = run_session(
+                QUESTION, make_config(), FakeClient(), out=out, html_path=path
+            )
+            self.assertEqual(code, 0)
+            with open(path, encoding="utf-8") as fh:
+                content = fh.read()
+        self.assertIn("<!DOCTYPE html>", content)
+        self.assertIn("<title>AI Council Session</title>", content)
+        self.assertIn("<style>", content)
+        self.assertIn("<h1>AI Council Session</h1>", content)
+        self.assertIn("<h2>Question</h2>", content)
+        self.assertIn(QUESTION, content)
+        self.assertIn("Round 1 — Independent Opinions", content)
+        self.assertIn("Qwen 3.5 9B", content)
+        self.assertIn("Round 2 — Council Discussion", content)
+        self.assertIn("Final Council Report", content)
+        # the page is rendered HTML, not a markdown dump
+        self.assertNotIn("## Round 1", content)
+        self.assertNotIn("```", content)
+        self.assertIn("Transcript saved to", out.getvalue())
+
+    def test_html_escapes_model_output(self):
+        def reply(model, prompt):
+            return "<script>alert(1)</script> & answer"
+
+        client = FakeClient(reply=reply)
+        out = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "council.html")
+            code = run_session(
+                QUESTION, make_config(), client, out=out, html_path=path
+            )
+            self.assertEqual(code, 0)
+            with open(path, encoding="utf-8") as fh:
+                content = fh.read()
+        self.assertIn("&lt;script&gt;", content)
+        self.assertNotIn("<script>alert", content)
+
+
+class TestSaveFlags(unittest.TestCase):
+    """--md and --html are independent flags that may be combined."""
+
+    def _capture(self, argv):
+        import cli as cli_module
+        from unittest.mock import patch
+
+        captured = {}
+
+        def fake_run_session(question, config=None, **kwargs):
+            captured["question"] = question
+            captured.update(kwargs)
+            return 0
+
+        with patch.object(cli_module, "run_session", fake_run_session):
+            code = cli_module.main(argv)
+        return code, captured
+
+    def test_md_flag(self):
+        code, captured = self._capture(["--md", "council.md", "Question?"])
+        self.assertEqual(code, 0)
+        self.assertEqual(captured["md_path"], "council.md")
+        self.assertIsNone(captured["html_path"])
+
+    def test_html_flag(self):
+        code, captured = self._capture(["--html", "council.html", "Question?"])
+        self.assertEqual(code, 0)
+        self.assertIsNone(captured["md_path"])
+        self.assertEqual(captured["html_path"], "council.html")
+
+    def test_md_and_html_combined(self):
+        code, captured = self._capture(
+            ["--md", "council.md", "--html", "council.html", "Question?"]
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(captured["md_path"], "council.md")
+        self.assertEqual(captured["html_path"], "council.html")
+
+    def test_default_saves_timestamped_html(self):
+        code, captured = self._capture(["Question?"])
+        self.assertEqual(code, 0)
+        self.assertIsNone(captured["md_path"])
+        self.assertRegex(captured["html_path"], r"^out/council-\d{8}-\d{6}\.html$")
+
+    def test_md_only_disables_the_html_default(self):
+        code, captured = self._capture(["--md", "council.md", "Question?"])
+        self.assertEqual(code, 0)
+        self.assertEqual(captured["md_path"], "council.md")
+        self.assertIsNone(captured["html_path"])
 
 
 if __name__ == "__main__":

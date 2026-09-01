@@ -1,12 +1,12 @@
 # AI Council
 
-**A multi-model deliberation experiment — v0.1**
+**A multi-model deliberation experiment — v0.1.1**
 
 `ai-council` convenes three different local Ollama models to discuss a question, challenge each other's reasoning, and produce a consensus report. It is an experimental prototype built to answer one question:
 
 > Does structured disagreement between different LLMs produce a more reliable conclusion than simply asking one LLM?
 
-No web UI. No cloud services. No agent frameworks. Just three local models, a transparent council protocol, and a readable transcript.
+No web server. No cloud services. No agent frameworks. Just three local models, a transparent council protocol, and a transcript that reads as well in a browser as it does in a terminal.
 
 ---
 
@@ -104,14 +104,15 @@ python3 -m venv .venv
 # optionally, make `ai-council` available as a global command
 ln -sf "$(pwd)/.venv/bin/ai-council" /opt/homebrew/bin/ai-council   # macOS (Homebrew)
 
-ai-council --version    # -> ai-council v0.1.0
+ai-council --version    # -> ai-council v0.1.1
+python ai_council.py --version    # -> ai-council v0.1.1
 ```
 
 No installation is required either — run the launcher directly:
 
 ```bash
 python ai_council.py "Should I buy 256GB or 512GB for my Mac mini?"
-python ai_council.py --version        # -> ai-council v0.1.0
+python ai_council.py --version        # -> ai-council v0.1.1
 ```
 
 ## Usage
@@ -119,13 +120,13 @@ python ai_council.py --version        # -> ai-council v0.1.0
 Ask a one-off question:
 
 ```bash
-ai-council "Should I buy 256GB or 512GB for my Mac mini?"
+python ai_council.py "Should I buy 256GB or 512GB for my Mac mini?"
 ```
 
 Or run interactively (multi-line questions supported — end with `Ctrl-D`):
 
 ```bash
-ai-council
+python ai_council.py
 ```
 
 ```
@@ -142,18 +143,33 @@ background, and your constraints in a text/Markdown file — the whole file
 is sent verbatim to every council member:
 
 ```bash
-ai-council --file use_cases/mac-mini-storage.md
-cat my-question.md | ai-council --file -    # read from stdin
+python ai_council.py --file use_cases/mac-mini-storage.md
+cat my-question.md | python ai_council.py --file -    # read from stdin
 ```
 
 See [`use_cases/README.md`](use_cases/README.md) for the recommended file
 shape and `use_cases/mac-mini-storage.md` for a worked example.
 
-Save the full session as a Markdown transcript:
+Every session is saved as a transcript. By default you get a
+self-contained HTML page with a timestamped name (e.g.
+`out/council-20260901-094709.html`), so repeated runs never overwrite each
+other; `--md` saves readable Markdown instead (defaults to `out/` unless
+you give a path), and `--html FILE` picks the name. The two flags can
+be used together:
 
 ```bash
-ai-council "Should I buy 256GB or 512GB?" --save council.md
+python ai_council.py "Should I buy 256GB or 512GB?"            # out/council-<timestamp>.html
+python ai_council.py "Should I buy 256GB or 512GB?" --md council.md
+python ai_council.py "Should I buy 256GB or 512GB?" --html council.html
+python ai_council.py "Should I buy 256GB or 512GB?" --md council.md --html council.html
 ```
+
+The HTML page is a single self-contained file — inline CSS only, no
+scripts, no external assets — so it can be opened directly in any
+browser, emailed, or dropped into a static site. Markdown from the
+question file and model outputs is rendered to real HTML (headings,
+lists, bold/italic/code, blockquotes), and everything is escaped, so
+model output can never inject markup.
 
 ---
 
@@ -177,7 +193,7 @@ AI_COUNCIL_MODEL_ANALYST=llama3.2:latest \
 AI_COUNCIL_MODEL_THINKER=llama3.2:latest \
 AI_COUNCIL_MODEL_SKEPTIC=llama3.2:latest \
 AI_COUNCIL_MODERATOR=llama3.2:latest \
-ai-council "question"
+python ai_council.py "question"
 ```
 
 ---
@@ -189,10 +205,10 @@ Deliberately small and modular — the orchestration is built by hand so the cou
 ```
 ai-council/
 ├── README.md
-├── VERSION               # single source of truth: "0.1.0"
+├── VERSION               # single source of truth: "0.1.1"
 ├── pyproject.toml
 ├── ai_council.py         # launcher / main entry: python ai_council.py ... / --version
-├── cli.py                # argument parsing, interactive input, transcript display, --save
+├── cli.py                # argument parsing, interactive input, transcript display, --md/--html rendering
 ├── council.py            # orchestrates Round 1 → Round 2 → Moderator → report
 ├── ollama.py             # local Ollama API client (stdlib urllib); errors and timeouts
 ├── prompts.py            # all system prompts and discussion prompts in one place
@@ -254,7 +270,7 @@ Deliberately not implemented yet, but the architecture keeps the door open:
 - Cloud participants: ChatGPT, Gemini, Claude
 - More Ollama models, different council roles
 - More debate rounds; user participation mid-discussion
-- Web interface; session history; consensus scoring
+- Interactive web interface; session history; consensus scoring
 - Evidence/research phase, fact-checker and devil's advocate participants
 
 ## Development Philosophy
