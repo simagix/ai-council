@@ -5,17 +5,23 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import IO, List, Optional
 
-from . import __version__
-from .config import Config, load_config
-from .council import preflight, run_council, CouncilError
-from .ollama import (
+from config import Config, load_config
+from council import preflight, run_council, CouncilError
+from ollama import (
     ModelNotFoundError,
     OllamaClient,
     OllamaConnectionError,
     OllamaError,
 )
+
+_ROOT = Path(__file__).resolve().parent
+try:
+    __version__ = (_ROOT / "VERSION").read_text(encoding="utf-8").strip() or "0.1.0"
+except OSError:
+    __version__ = "0.1.0"
 
 DOUBLE_LINE = "═" * 52
 SINGLE_LINE = "─" * 52

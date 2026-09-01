@@ -131,7 +131,7 @@ ai-council "Should I buy 256GB or 512GB?" --save council.md
 
 ## Configuration
 
-Model names and settings live in one place (`src` defaults in `ai_council/config.py`) so they can be changed without touching the core logic. Every value can be overridden with environment variables:
+Model names and settings live in one place (`config.py`) so they can be changed without touching the core logic. Every value can be overridden with environment variables:
 
 | Variable | Meaning | Default |
 | --- | --- | --- |
@@ -163,15 +163,13 @@ ai-council/
 ├── README.md
 ├── VERSION               # single source of truth: "0.1.0"
 ├── pyproject.toml
-├── ai_council.py         # launcher: python ai_council.py ... / --version
-├── ai_council/
-│   ├── __init__.py
-│   ├── cli.py            # argument parsing, interactive input, transcript display, --save
-│   ├── council.py        # orchestrates Round 1 → Round 2 → Moderator → report
-│   ├── ollama.py         # local Ollama API client (stdlib urllib); errors and timeouts
-│   ├── prompts.py        # all system prompts and discussion prompts in one place
-│   ├── models.py         # CouncilMember(name, model, role, role_key) representations
-│   └── config.py         # model names and basic settings; env-var overrides
+├── ai_council.py         # launcher / main entry: python ai_council.py ... / --version
+├── cli.py                # argument parsing, interactive input, transcript display, --save
+├── council.py            # orchestrates Round 1 → Round 2 → Moderator → report
+├── ollama.py             # local Ollama API client (stdlib urllib); errors and timeouts
+├── prompts.py            # all system prompts and discussion prompts in one place
+├── models.py             # CouncilMember(name, model, role, role_key) representations
+├── config.py             # model names and basic settings; env-var overrides
 └── tests/
 ```
 

@@ -6,8 +6,7 @@ import os
 import tempfile
 import unittest
 
-import ai_council
-from ai_council.cli import main, run_session
+from cli import main, run_session, __version__
 
 from helpers import FakeClient, make_config
 
@@ -26,7 +25,7 @@ class TestVersion(unittest.TestCase):
     def test_version_matches_version_file(self):
         root = os.path.join(os.path.dirname(__file__), os.pardir)
         with open(os.path.join(root, "VERSION"), encoding="utf-8") as fh:
-            self.assertEqual(ai_council.__version__, fh.read().strip())
+            self.assertEqual(__version__, fh.read().strip())
 
 
 class TestRunSession(unittest.TestCase):
@@ -71,7 +70,7 @@ class TestRunSession(unittest.TestCase):
         self.assertIn("Cannot connect to Ollama.", out.getvalue())
 
     def test_moderator_failure_returns_exit_code_1(self):
-        from ai_council.ollama import OllamaError
+        from ollama import OllamaError
 
         class ModeratorFails(FakeClient):
             def generate(self, model, prompt, system=None, timeout=None):

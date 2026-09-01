@@ -11,10 +11,10 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 
 [project.scripts]
-ai-council = "ai_council.cli:main"
+ai-council = "cli:main"
 
 [tool.setuptools]
-packages = ["ai_council"]
+py-modules = ["ai_council", "cli", "council", "config", "models", "ollama", "prompts"]
 
 [tool.setuptools.dynamic]
 version = { file = "VERSION" }

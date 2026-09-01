@@ -17,15 +17,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
-from .config import Config
-from .models import CouncilMember
-from .ollama import (
+from config import Config
+from models import CouncilMember
+from ollama import (
     ModelNotFoundError,
     OllamaClient,
     OllamaError,
     normalize_model_name,
 )
-from .prompts import (
+from prompts import (
     MODERATOR_SYSTEM,
     MODERATOR_TEMPLATE,
     ROLE_SYSTEM_PROMPTS,

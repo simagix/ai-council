@@ -5,8 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from ai_council.config import load_config  # noqa: E402
-from ai_council.ollama import OllamaConnectionError, OllamaError  # noqa: E402
+from config import load_config  # noqa: E402
+from ollama import OllamaConnectionError, OllamaError  # noqa: E402
 
 
 class FakeClient:

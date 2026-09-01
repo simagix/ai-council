@@ -2,7 +2,7 @@
 
 import unittest
 
-from ai_council.ollama import normalize_model_name, strip_thinking
+from ollama import normalize_model_name, strip_thinking
 
 
 class TestStripThinking(unittest.TestCase):

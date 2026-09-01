@@ -2,8 +2,8 @@
 
 import unittest
 
-from ai_council.council import preflight, run_council, CouncilError
-from ai_council.ollama import ModelNotFoundError, OllamaError, normalize_model_name
+from council import preflight, run_council, CouncilError
+from ollama import ModelNotFoundError, OllamaError, normalize_model_name
 
 from helpers import FakeClient, make_config
 

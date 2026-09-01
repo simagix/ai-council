@@ -21,7 +21,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Mapping, Optional, Tuple
 
-from .models import CouncilMember
+from models import CouncilMember
 
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 DEFAULT_TIMEOUT_SECONDS = 300

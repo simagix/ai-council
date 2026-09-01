@@ -14,7 +14,7 @@ class CouncilMember:
         model: The Ollama model tag to run (e.g. ``"qwen3.5:9b"``).
         role: Human-readable role label (e.g. ``"Analyst"``).
         role_key: Stable key used to look up the role's system prompt
-            in :data:`ai_council.prompts.ROLE_SYSTEM_PROMPTS`.
+            in :data:`prompts.ROLE_SYSTEM_PROMPTS`.
     """
 
     name: str
