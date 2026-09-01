@@ -28,6 +28,89 @@ class TestVersion(unittest.TestCase):
             self.assertEqual(__version__, fh.read().strip())
 
 
+class TestQuestionFile(unittest.TestCase):
+    def _write(self, content):
+        fh = tempfile.NamedTemporaryFile(
+            "w", suffix=".md", delete=False, encoding="utf-8"
+        )
+        fh.write(content)
+        fh.close()
+        self.addCleanup(os.unlink, fh.name)
+        return fh.name
+
+    def test_reads_file_content_verbatim(self):
+        import cli as cli_module
+        from unittest.mock import patch
+
+        path = self._write("A long question with context.\nSecond line.\n")
+        captured = {}
+
+        def fake_run_session(question, config=None, **kwargs):
+            captured["question"] = question
+            return 0
+
+        with patch.object(cli_module, "run_session", fake_run_session):
+            code = cli_module.main(["--file", path])
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            captured["question"],
+            "A long question with context.\nSecond line.",
+        )
+
+    def test_reads_from_stdin_with_dash(self):
+        import cli as cli_module
+        from unittest.mock import patch
+
+        captured = {}
+
+        def fake_run_session(question, config=None, **kwargs):
+            captured["question"] = question
+            return 0
+
+        with patch.object(cli_module, "run_session", fake_run_session):
+            with patch.object(
+                cli_module.sys, "stdin", io.StringIO("Piped question?\n")
+            ):
+                code = cli_module.main(["--file", "-"])
+        self.assertEqual(code, 0)
+        self.assertEqual(captured["question"], "Piped question?")
+
+    def test_missing_file_reports_error(self):
+        from cli import _read_question_file
+
+        out = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            result = _read_question_file("/nonexistent/question.md")
+        self.assertIsNone(result)
+        self.assertIn("Question file not found", err.getvalue())
+
+    def test_empty_file_reports_error(self):
+        from cli import _read_question_file
+
+        path = self._write("   \n")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            result = _read_question_file(path)
+        self.assertIsNone(result)
+        self.assertIn("Question file is empty", err.getvalue())
+
+    def test_directory_reports_error(self):
+        from cli import _read_question_file
+
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            result = _read_question_file(tempfile.gettempdir())
+        self.assertIsNone(result)
+        self.assertIn("Not a file", err.getvalue())
+
+    def test_file_and_positional_question_are_mutually_exclusive(self):
+        path = self._write("Some question?")
+        with self.assertRaises(SystemExit) as ctx:
+            main(["--file", path, "also", "this"])
+        self.assertEqual(ctx.exception.code, 2)
+
+
 class TestRunSession(unittest.TestCase):
     def test_transcript_contains_all_sections(self):
         out = io.StringIO()

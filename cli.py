@@ -65,6 +65,34 @@ def _interactive_question() -> str:
     return text
 
 
+def _read_question_file(path: str) -> Optional[str]:
+    """Read a question (with context) from a file; ``-`` means stdin.
+
+    Returns the stripped text, or ``None`` after printing an error.
+    The file content is used verbatim as the council's question.
+    """
+    if path == "-":
+        text = sys.stdin.read()
+    else:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+        except FileNotFoundError:
+            print(f"Question file not found: {path}", file=sys.stderr)
+            return None
+        except IsADirectoryError:
+            print(f"Not a file: {path}", file=sys.stderr)
+            return None
+        except OSError as exc:
+            print(f"Could not read question file {path}: {exc}", file=sys.stderr)
+            return None
+    text = text.strip()
+    if not text:
+        print(f"Question file is empty: {path}", file=sys.stderr)
+        return None
+    return text
+
+
 def _failure_block(member, stage: str, error: str) -> str:
     return (
         f"\n[FAILED — {member.name} ({member.role}) during {stage}]\n"
@@ -204,6 +232,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         "question", nargs="*", help="the question for the council"
     )
     parser.add_argument(
+        "--file",
+        "-f",
+        metavar="FILE",
+        help=(
+            "read the question (and its context) from a file; "
+            "use - to read from stdin. See use_cases/ for examples."
+        ),
+    )
+    parser.add_argument(
         "--save",
         metavar="FILE",
         help="save the full session transcript to a Markdown file",
@@ -215,9 +252,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    question = " ".join(args.question).strip()
-    if not question:
-        question = _interactive_question()
+    if args.file and args.question:
+        parser.error("--file cannot be combined with a question argument")
+
+    if args.file:
+        question = _read_question_file(args.file)
+        if question is None:
+            return 2
+    else:
+        question = " ".join(args.question).strip()
+        if not question:
+            question = _interactive_question()
     if not question:
         print("No question provided.", file=sys.stderr)
         return 2

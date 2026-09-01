@@ -127,6 +127,20 @@ Enter your question:
 >
 ```
 
+### Question files (`use_cases/`)
+
+Real questions usually carry a lot of context. Put the question, its
+background, and your constraints in a text/Markdown file — the whole file
+is sent verbatim to every council member:
+
+```bash
+ai-council --file use_cases/mac-mini-storage.md
+cat my-question.md | ai-council --file -    # read from stdin
+```
+
+See [`use_cases/README.md`](use_cases/README.md) for the recommended file
+shape and `use_cases/mac-mini-storage.md` for a worked example.
+
 Save the full session as a Markdown transcript:
 
 ```bash
