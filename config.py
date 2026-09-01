@@ -24,7 +24,9 @@ from typing import Mapping, Optional, Tuple
 from models import CouncilMember
 
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
-DEFAULT_TIMEOUT_SECONDS = 300
+# Generous by design: local models spend tens of seconds loading, and
+# reasoning models (e.g. qwen3.5) think for a long time before answering.
+DEFAULT_TIMEOUT_SECONDS = 600
 DEFAULT_MODERATOR_MODEL = "qwen3.5:9b"
 
 _MEMBER_ENV_VARS = {

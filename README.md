@@ -12,6 +12,10 @@ No web UI. No cloud services. No agent frameworks. Just three local models, a tr
 
 ## How It Works
 
+![AI Council workflow diagram: a user question is sent to three models for independent opinions (Round 1), the models then critique each other's arguments (Round 2), and a moderator synthesizes a consensus report (Round 3)](council-workflow.jpeg)
+
+*The council workflow: three independent opinions → structured discussion → moderator's consensus report.*
+
 ```
 User question
       ↓

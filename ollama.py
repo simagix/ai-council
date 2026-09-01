@@ -200,6 +200,11 @@ class OllamaClient:
             raise OllamaConnectionError(
                 f"Cannot connect to Ollama at {self.host}: {exc.reason}"
             ) from exc
+        except TimeoutError as exc:
+            raise OllamaError(
+                f"Ollama request timed out after {timeout}s "
+                f"(no data received from {model})"
+            ) from exc
         except OSError as exc:
             raise OllamaConnectionError(
                 f"Cannot connect to Ollama at {self.host}: {exc}"

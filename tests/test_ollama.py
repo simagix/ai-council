@@ -57,6 +57,19 @@ class TestThinkingStreamFilter(unittest.TestCase):
         self.assertEqual(f.feed("ink>ok"), "ok")
 
 
+class TestStreamTimeout(unittest.TestCase):
+    def test_stream_timeout_raises_friendly_error(self):
+        from unittest.mock import patch
+
+        from ollama import OllamaClient, OllamaError
+
+        client = OllamaClient(timeout=5)
+        with patch("urllib.request.urlopen", side_effect=TimeoutError()):
+            with self.assertRaises(OllamaError) as ctx:
+                client.generate("m", "p", on_token=lambda t: None)
+        self.assertIn("timed out after 5s", str(ctx.exception))
+
+
 class TestNormalizeModelName(unittest.TestCase):
     def test_strips_latest_suffix(self):
         self.assertEqual(normalize_model_name("llama3.2:latest"), "llama3.2")
