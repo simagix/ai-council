@@ -119,12 +119,6 @@ ollama pull llama3.2:latest
 ```bash
 git clone https://github.com/simagix/ai-council.git
 cd ai-council
-
-# Homebrew Python is externally managed — use a project venv
-python3 -m venv .venv
-.venv/bin/pip install -e .
-
-python ai_council.py --version    # -> ai-council v0.2.0
 ```
 
 No installation is required either — run the launcher directly:
@@ -265,7 +259,6 @@ Deliberately small and modular — the orchestration is built by hand so the cou
 ai-council/
 ├── README.md
 ├── VERSION               # single source of truth: "0.2.0"
-├── pyproject.toml
 ├── ai_council.py         # launcher / main entry: python ai_council.py ... / --version
 ├── cli.py                # argument parsing, interactive input, transcript display, --md/--html rendering, --server dispatch
 ├── council.py            # orchestrates Round 1 → Round 2 → Moderator → report
