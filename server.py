@@ -6,7 +6,7 @@ assets).
 
 Features
 --------
-* ``python ai_council.py --server`` runs a web daemon on ``127.0.0.1:8080`` by default
+* ``python ai_council.py --server`` runs a web daemon on ``127.0.0.1:6636`` by default
   (``--host``/``--port`` override it; ``--daemonize``/``--stop`` manage a
   background process).
 * ``POST /api/sessions`` accepts ``{"question": ..., "file": {"name", "
@@ -71,7 +71,7 @@ except OSError:
     __version__ = "0.2.0"
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8080
+DEFAULT_PORT = 6636
 MAX_QUESTION_CHARS = 200_000
 MAX_UPLOAD_CHARS = 1_000_000
 

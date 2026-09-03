@@ -1,0 +1,19 @@
+# Keep the build context small — the image only needs the .py modules + VERSION
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+*.egg-info
+build
+dist
+out
+samples
+tests
+use_cases
+*.md
+*.jpeg
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -1,0 +1,39 @@
+services:
+  ai-council:
+    build: .
+    image: ai-council:latest
+    container_name: ai-council
+
+    # Works out of the box on macOS / Windows / Linux Docker.
+    ports:
+      - "6636:6636"
+
+    # Make host.docker.internal resolve to the host on Linux too, so the
+    # container can reach services bound to the host's loopback (Ollama,
+    # Voicebox, ...). On Docker Desktop this resolution is built in.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # The app's localhost services live on the HOST, not inside the
+    # container — so point the Ollama client at host.docker.internal.
+    # (On Docker Desktop it forwards to the host's 127.0.0.1.)
+    environment:
+      AI_COUNCIL_OLLAMA_HOST: http://host.docker.internal:11434
+
+    volumes:
+      # Persist council session history across container restarts.
+      - ${HOME}/.ai-council:/data
+
+    restart: unless-stopped
+
+    # --- Alternative: share the host network stack (literal localhost) -----
+    # Replace the `ports` / `extra_hosts` / `environment` blocks above with:
+    #
+    #   network_mode: host
+    #   command: ["python", "ai_council.py", "--server", "--no-open"]
+    #
+    # Then "localhost:11434" (Ollama), Voicebox, etc. resolve exactly as on
+    # the host. Linux: works out of the box. Docker Desktop (macOS/Windows):
+    # first enable Settings → Resources → "Enable host networking" (4.34+),
+    # otherwise the server is unreachable from the host.
+

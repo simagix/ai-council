@@ -16,7 +16,7 @@ Stop asking one AI. Ask three, and let them debate.
 python ai_council.py --server
 ```
 
-That's it. Opens **http://127.0.0.1:8080** in your browser. Type or paste a question, optionally drag & drop a context file, and watch three models deliberate in real time with live streaming responses. Everything stays on your machine.
+That's it. Opens **http://127.0.0.1:6636** in your browser. Type or paste a question, optionally drag & drop a context file, and watch three models deliberate in real time with live streaming responses. Everything stays on your machine.
 
 ---
 
@@ -192,7 +192,7 @@ model output can never inject markup.
 python ai_council.py --server
 ```
 
-Opens **http://127.0.0.1:8080** automatically. Type or paste your question, optionally drag & drop a context file, and watch three models deliberate with live streaming. When finished, download the **Final Report** (consensus + disagreements + strongest arguments + minority opinion) as Markdown or self-contained HTML.
+Opens **http://127.0.0.1:6636** automatically. Type or paste your question, optionally drag & drop a context file, and watch three models deliberate with live streaming. When finished, download the **Final Report** (consensus + disagreements + strongest arguments + minority opinion) as Markdown or self-contained HTML.
 
 **Features:**
 - **Live streaming** — watch responses arrive token-by-token
@@ -212,7 +212,7 @@ python ai_council.py --server --stop             # stop the daemon
 | Flag | Meaning | Default |
 | --- | --- | --- |
 | `--host` | Interface to bind | `127.0.0.1` |
-| `--port` | Port to listen on | `8080` |
+| `--port` | Port to listen on | `6636` |
 | `--data-dir` | Where session history is stored | `$AI_COUNCIL_DATA_DIR` or `~/.ai-council` |
 | `--daemonize` | Fork into the background | off |
 | `--stop` | Stop the background daemon | — |
@@ -223,6 +223,34 @@ python ai_council.py --server --stop             # stop the daemon
 **API for scripting:**
 
 The server exposes a JSON API: `GET /api/health`, `GET /api/history`, `POST /api/sessions`, `GET/DELETE /api/sessions/<id>`, `GET /api/sessions/<id>/events` (Server-Sent Events), `GET /api/sessions/<id>/download?format=report|md|html`.
+
+---
+
+## Running in Docker
+
+```bash
+docker compose up --build -d
+```
+
+The web interface is then available at **http://127.0.0.1:6636** (the same default port as native mode).
+
+The container reaches services running on the host's loopback — Ollama (`localhost:11434`), Voicebox, etc. — via `host.docker.internal` (set as `AI_COUNCIL_OLLAMA_HOST` in `docker-compose.yml`; the `host-gateway` mapping makes it work on Linux too). On Docker Desktop, `host.docker.internal` forwards to the host's `127.0.0.1`, so services bound to loopback are reachable unchanged.
+
+Notes:
+
+- **Session history** is persisted by mounting `~/.ai-council` into the container.
+- **Want literal `localhost` connectivity instead?** Enable *Settings → Resources → Enable host networking* in Docker Desktop (4.34+, on Linux it's automatic), then swap the compose file to the `network_mode: host` alternative documented in the comments at the bottom of `docker-compose.yml`.
+
+Run without compose:
+
+```bash
+docker build -t ai-council .
+docker run -d --name ai-council -p 6636:6636 \
+  -e AI_COUNCIL_OLLAMA_HOST=http://host.docker.internal:11434 \
+  -v ~/.ai-council:/data ai-council
+```
+
+> With plain `docker run` on Linux, also add `--add-host=host.docker.internal:host-gateway` so the container can resolve the host's loopback services. Alternatively use `--network host` (Linux, or Docker Desktop with host networking enabled) for literal `localhost` connectivity.
 
 ---
 
