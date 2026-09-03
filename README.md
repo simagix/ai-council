@@ -16,7 +16,7 @@ Stop asking one AI. Ask three, and let them debate.
 python ai_council.py --server
 ```
 
-That's it. Opens **http://127.0.0.1:6636** in your browser. Type or paste a question, optionally drag & drop a context file, and watch three models deliberate in real time with live streaming responses. Everything stays on your machine.
+That's it. Opens **http://127.0.0.1:6636** in your browser. Type or paste a question — optionally alongside a drag & dropped context file (.md, .txt, .html, .json, .csv; HTML reports are converted to plain text automatically) — and watch three models deliberate in real time with live streaming responses. Everything stays on your machine.
 
 ---
 

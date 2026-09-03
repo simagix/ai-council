@@ -149,6 +149,60 @@ class SessionApiTests(ServerTestBase):
         self.assertIn("Context document — notes.txt", snap["question"])
         self.assertIn("hello world", snap["question"])
 
+    def test_create_combines_question_and_file(self):
+        """A typed request plus an attached document work in one session."""
+        status, snap = self.post_json(
+            "/api/sessions",
+            {
+                "question": "Analyze the attached report — is MDB a buy?",
+                "file": {"name": "report.md", "content": "Revenue is up 20%."},
+            },
+        )
+        self.assertEqual(status, 201)
+        self.assertIn("Analyze the attached report", snap["question"])
+        self.assertIn("Context document — report.md", snap["question"])
+        self.assertIn("Revenue is up 20%.", snap["question"])
+
+    def test_create_converts_html_attachment_to_text(self):
+        """HTML reports are stripped to readable prose for the council."""
+        html_doc = (
+            "<!DOCTYPE html><html><head><style>.x{color:red}</style>"
+            "<script>evil()</script></head><body><h1>Monthly Report</h1>"
+            "<p>Revenue &amp; profit up 20%.</p></body></html>"
+        )
+        status, snap = self.post_json(
+            "/api/sessions",
+            {
+                "question": "Is MDB a buy?",
+                "file": {"name": "report.html", "content": html_doc},
+            },
+        )
+        self.assertEqual(status, 201)
+        q = snap["question"]
+        self.assertIn("converted from HTML", q)
+        self.assertIn("Monthly Report", q)
+        self.assertIn("Revenue & profit up 20%.", q)
+        self.assertNotIn("<h1>", q)
+        self.assertNotIn("evil()", q)
+        self.assertNotIn(".x{color:red}", q)
+
+    def test_html_conversion_sniffs_html_content_without_extension(self):
+        """A misnamed file whose content is HTML is still converted."""
+        status, snap = self.post_json(
+            "/api/sessions",
+            {
+                "file": {
+                    "name": "report.txt",
+                    "content": "<html><body><p>Net income rose.</p></body></html>",
+                },
+            },
+        )
+        self.assertEqual(status, 201)
+        q = snap["question"]
+        self.assertIn("converted from HTML", q)
+        self.assertIn("Net income rose.", q)
+        self.assertNotIn("<p>", q)
+
     def test_create_rejects_oversized_file(self):
         status, payload = self.post_json(
             "/api/sessions",

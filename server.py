@@ -10,8 +10,11 @@ Features
   (``--host``/``--port`` override it; ``--daemonize``/``--stop`` manage a
   background process).
 * ``POST /api/sessions`` accepts ``{"question": ..., "file": {"name", "
-  content"}}`` — a question typed by the user plus a context document
-  picked or dropped in the browser.
+  content"}}`` — a question typed by the user, a context document picked
+  or dropped in the browser, or both together (e.g. *"analyze the
+  attached report — is MDB a buy?"* plus an uploaded HTML report).
+  HTML attachments are converted to plain text before they reach the
+  council.
 * Each council runs in a worker thread; structural changes persist via
   the session store and live token streams reach the UI over
   Server-Sent Events (``GET /api/sessions/{id}/events``).
@@ -29,12 +32,14 @@ import argparse
 import io
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
 import threading
 import time
 import webbrowser
+from html.parser import HTMLParser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -76,6 +81,85 @@ MAX_QUESTION_CHARS = 200_000
 MAX_UPLOAD_CHARS = 1_000_000
 
 _STAGE_PHASE = {"ROUND 1": 1, "ROUND 2": 2, "FINAL COUNCIL REPORT": 3}
+
+
+class _HTMLTextExtractor(HTMLParser):
+    """Extract readable text from an HTML document (stdlib only).
+
+    ``<script>``/``<style>`` bodies are dropped, block-level tags become
+    line breaks, and entity references are decoded, so a saved HTML
+    report turns into plain prose the council can reason about.
+    """
+
+    _BLOCK_TAGS = frozenset({
+        "address", "article", "aside", "blockquote", "br", "caption",
+        "div", "dd", "dl", "dt", "fieldset", "figcaption", "figure",
+        "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header",
+        "hr", "li", "main", "nav", "ol", "p", "pre", "section", "table",
+        "tbody", "td", "tfoot", "th", "thead", "tr", "ul",
+    })
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._chunks: List[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag in ("script", "style"):
+            self._skip_depth += 1
+        elif tag in self._BLOCK_TAGS and self._chunks:
+            self._chunks.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("script", "style"):
+            self._skip_depth = max(0, self._skip_depth - 1)
+        elif tag in self._BLOCK_TAGS:
+            self._chunks.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip_depth and data.strip():
+            self._chunks.append(data)
+
+    def text(self) -> str:
+        raw = "".join(self._chunks)
+        lines = (
+            re.sub(r"[ \t]+", " ", line).strip()
+            for line in raw.splitlines()
+        )
+        out: List[str] = []
+        blank = 0
+        for line in lines:
+            if line:
+                out.append(line)
+                blank = 0
+            elif out and not blank:
+                out.append("")
+                blank += 1
+        return "\n".join(out).strip()
+
+
+def html_to_text(content: str) -> str:
+    """Convert an HTML string to readable plain text.
+
+    Falls back to the raw input if parsing produces nothing usable
+    (e.g. the "HTML" file is actually plain text).
+    """
+    try:
+        extractor = _HTMLTextExtractor()
+        extractor.feed(content)
+        extractor.close()
+    except Exception:  # malformed markup must never block a session
+        return content
+    text = extractor.text()
+    return text if text else content
+
+
+def _looks_like_html(name: str, content: str) -> bool:
+    """Decide whether an uploaded attachment should be HTML-converted."""
+    if name.lower().endswith((".html", ".htm")):
+        return True
+    head = content.lstrip()[:256].lower()
+    return head.startswith("<!doctype html") or head.startswith("<html")
 
 
 def _real_client(config: Config) -> OllamaClient:
@@ -459,7 +543,13 @@ class CouncilHandler(BaseHTTPRequestHandler):
             if len(content) > MAX_UPLOAD_CHARS:
                 return self._json(400, {"error": "context file is too large"})
             if content.strip():
-                context = f"Context document — {name}:\n\n{content}"
+                label = f"Context document — {name}:"
+                if _looks_like_html(name, content):
+                    # Saved HTML reports are full of markup noise; convert
+                    # them to plain text so the council sees the prose.
+                    content = html_to_text(content)
+                    label = f"Context document — {name} (converted from HTML):"
+                context = f"{label}\n\n{content}"
                 question = f"{question}\n\n---\n\n{context}" if question else context
 
         if not question.strip():
@@ -912,8 +1002,8 @@ _APP_CSS_2 = r"""
 """
 _APP_CSS_3 = r"""
 /* ---- session ---- */
-.sess-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
-.sess-info { min-width: 0; }
+.sess-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.sess-info { flex: 1 1 auto; min-width: 0; }
 .sess-status { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .stat-badge { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 11px; border-radius: 999px; }
 .stat-badge.running { color: #fcd34d; background: rgba(251,191,36,.14); border: 1px solid rgba(251,191,36,.35); }
@@ -921,14 +1011,20 @@ _APP_CSS_3 = r"""
 .stat-badge.failed, .stat-badge.aborted { color: #fda4af; background: rgba(251,113,133,.14); border: 1px solid rgba(251,113,133,.35); }
 .stat-badge.interrupted { color: #cbd5e1; background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.35); }
 .sess-date { color: var(--faint); font-size: 12.5px; }
-.sess-title { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: -.2px; }
+.sess-title { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: -.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .members-strip { display: flex; gap: 8px; flex-wrap: wrap; }
 .member-chip { display: inline-flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; color: var(--muted); }
 .member-chip .m-ava { width: 22px; height: 22px; font-size: 11px; }
-.sess-actions { display: flex; gap: 10px; align-items: center; position: relative; }
+.sess-actions { display: flex; gap: 10px; align-items: center; position: relative; flex: none; z-index: 10; }
 .dl-menu { position: absolute; right: 0; top: 44px; z-index: 10; display: flex; flex-direction: column; gap: 4px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 6px; min-width: 210px; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
 .dl-menu button { text-align: left; border: none; background: transparent; color: var(--ink); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; }
 .dl-menu button:hover { background: rgba(99,102,241,.16); }
+@media (max-width: 640px) {
+  .sess-head { flex-wrap: wrap; }
+  .sess-info { flex: 1 1 100%; }
+  .sess-actions { flex: 1 1 100%; justify-content: flex-end; }
+  .sess-title { white-space: normal; }
+}
 
 /* stepper */
 .stepper { list-style: none; display: flex; margin: 0 0 18px; padding: 0; gap: 0; }
@@ -1027,14 +1123,14 @@ _APP_HTML = """
         </div>
         <form id="form" class="form-card" autocomplete="off">
           <label class="lbl" for="question">The question</label>
-          <textarea id="question" rows="5" placeholder="e.g.  Should I buy 256 GB or 512 GB of storage for my new Mac mini?"></textarea>
+          <textarea id="question" rows="5" placeholder="e.g.  Analyze the attached report — is MDB a buy?"></textarea>
           <div class="drop" id="drop">
-            <input type="file" id="file" hidden accept=".md,.txt,.markdown,.text,text/plain">
+            <input type="file" id="file" hidden accept=".md,.txt,.markdown,.text,.html,.htm,.json,.csv,text/plain,text/html">
             <div class="drop-inner">
               <div class="drop-icon">⤒</div>
               <div class="drop-copy">
                 <div class="drop-title">Drag &amp; drop a context file</div>
-                <div class="drop-sub">or <a href="#" id="browse">browse</a> — .md / .txt appended as context</div>
+                <div class="drop-sub">or <a href="#" id="browse">browse</a> — .md / .txt / .html / .json / .csv attached alongside your question</div>
               </div>
               <div class="chip" id="chip" hidden><span class="chip-name" id="chip-name"></span><button type="button" class="chip-x" id="chip-x" aria-label="remove file">✕</button></div>
             </div>
@@ -1240,7 +1336,7 @@ function bindDrop() {
 async function submitSession(ev) {
   ev.preventDefault();
   const question = $("question").value.trim();
-  if (!question && !attachedFile) { toast("Enter a question or drop a file."); return; }
+  if (!question && !attachedFile) { toast("Enter a question and/or attach a file."); return; }
   const body = { question: question };
   if (attachedFile) body.file = { name: attachedFile.name, content: attachedFile.content };
   const btn = $("submit");
@@ -1328,7 +1424,9 @@ function renderSnapshot(s) {
     (s.completed_at ? "  ·  completed " + fmtTime(s.completed_at) : "");
 
   const qOneLine = s.question.split(/\\r?\\n/)[0] || "Council session";
-  $("sess-title").textContent = qOneLine.length > 140 ? qOneLine.slice(0, 137) + "…" : qOneLine;
+  // CSS ellipsis handles the visual overflow; this cap just keeps the
+  // DOM string reasonable so very long pastes don't bloat the header.
+  $("sess-title").textContent = qOneLine.length > 240 ? qOneLine.slice(0, 237) + "…" : qOneLine;
   $("sess-title").title = s.question;
   $("members-strip").innerHTML = memberChips(s.members);
 
